@@ -40,7 +40,8 @@ func main() {
 	router.POST("/webhook", handlers.ProcessWebhook(logger, whatsappService, firestoreService))
 
 	// Start the server
-	if err := router.Run(":8082"); err != nil {
+	port := ":" + cfg.Port
+	if err := router.Run(port); err != nil {
 		logger.Fatalf("Failed to start server: %v", err)
 	}
 }

@@ -18,9 +18,9 @@ type Config struct {
 
 // LoadConfig loads the configuration from environment variables
 func LoadConfig() (*Config, error) {
-	if err := godotenv.Load(); err != nil {
-		return nil, err
-	}
+	// This will load the .env file if it exists, and do nothing if it doesn't.
+	// This is perfect for supporting both local development and production environments.
+	godotenv.Load()
 
 	return &Config{
 		WhatsappVerifyToken:     os.Getenv("WHATSAPP_VERIFY_TOKEN"),
