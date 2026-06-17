@@ -1,3 +1,32 @@
-bin/
-ngrok
-ngrok-v3-stable-linux-amd64.tgz
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+rentflow-webhook
+
+# Test binary, build with `go test -c`
+*.test
+
+# Output of coverage tool, created by `go test -coverprofile`
+*.out
+
+# Dependency directories
+vendor/
+
+# Environment configuration
+.env
+.env.local
+.env.*.local
+
+# Local configuration
+*.local
+
+# IDE files
+.idea/
+.vscode/
+
+# OS-generated files
+.DS_Store
+Thumbs.db
