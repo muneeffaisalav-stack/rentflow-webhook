@@ -18,9 +18,13 @@ type FirestoreService struct {
 
 // Invoice represents an invoice in Firestore
 type Invoice struct {
-	Amount      float64               `firestore:"amount"`
-	LandlordRef *firestore.DocumentRef `firestore:"landlordRef"`
-	TenantRef   *firestore.DocumentRef `firestore:"tenantRef"`
+	Amount       float64                `firestore:"amount"`
+	DueDate      string                 `firestore:"due_date"`
+	Month        string                 `firestore:"month"`
+	Status       string                 `firestore:"status"`
+	PropertyName string                 `firestore:"property_name"`
+	LandlordRef  *firestore.DocumentRef `firestore:"landlordRef"`
+	TenantRef    *firestore.DocumentRef `firestore:"tenantRef"`
 }
 
 // User represents a user in Firestore
