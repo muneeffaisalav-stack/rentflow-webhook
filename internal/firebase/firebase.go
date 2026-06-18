@@ -34,6 +34,19 @@ type User struct {
 	PhoneNumber string `firestore:"phoneNumber"`
 }
 
+// Tenant represents a tenant in Firestore
+type Tenant struct {
+	CreatedAt  string `firestore:"createdAt"`
+	DueDate    int64  `firestore:"dueDate"`
+	LandlordID string `firestore:"landlordId"`
+	Name       string `firestore:"name"`
+	Phone      string `firestore:"phone"`
+	PropertyID string `firestore:"propertyId"`
+	RentAmount int64  `firestore:"rentAmount"`
+	Status     string `firestore:"status"`
+	UPIID      string `firestore:"upiId"`
+}
+
 // Property represents a property in Firestore
 type Property struct {
 	Address      string `firestore:"address"`
@@ -97,6 +110,20 @@ func (s *FirestoreService) GetUser(ctx context.Context, userID string) (*User, e
 		return nil, err
 	}
 	return &user, nil
+}
+
+// GetTenant retrieves a tenant from Firestore
+func (s *FirestoreService) GetTenant(ctx context.Context, tenantID string) (*Tenant, error) {
+	s.log.WithField("tenantID", tenantID).Info("Getting tenant from Firestore")
+	doc, err := s.Client.Collection("tenants").Doc(tenantID).Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var tenant Tenant
+	if err := doc.DataTo(&tenant); err != nil {
+		return nil, err
+	}
+	return &tenant, nil
 }
 
 // GetProperty retrieves a property from Firestore

@@ -31,15 +31,15 @@ func HandleInteractiveMessage(log *logrus.Logger, whatsappService *services.What
 			log.WithError(err).Error("Failed to get invoice for security check")
 			return
 		}
-		tenant, err := firestoreService.GetUser(context.Background(), invoice.TenantID)
+		tenant, err := firestoreService.GetTenant(context.Background(), invoice.TenantID)
 		if err != nil {
 			log.WithError(err).Error("Failed to get tenant for security check")
 			return
 		}
 
 		// VERIFY: Is the person clicking the button the actual tenant?
-		if senderPhoneNumber != tenant.PhoneNumber {
-			log.Warnf("Unauthorized 'Mark as Paid' attempt. Sender: %s, Expected Tenant: %s", senderPhoneNumber, tenant.PhoneNumber)
+		if senderPhoneNumber != tenant.Phone {
+			log.Warnf("Unauthorized 'Mark as Paid' attempt. Sender: %s, Expected Tenant: %s", senderPhoneNumber, tenant.Phone)
 			return // Stop processing immediately
 		}
 
