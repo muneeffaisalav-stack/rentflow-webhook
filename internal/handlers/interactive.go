@@ -12,82 +12,119 @@ import (
 )
 
 func HandleInteractiveMessage(log *logrus.Logger, whatsappService *services.WhatsappService, firestoreService *firebase.FirestoreService, message *models.Message) {
-	log.Info("Handling interactive message")
 	buttonReplyID := message.Interactive.ButtonReply.ID
-	senderPhoneNumber := message.From
-	log = log.WithFields(logrus.Fields{
-		"buttonReplyID":     buttonReplyID,
-		"senderPhoneNumber": senderPhoneNumber,
-	})
+	senderPhoneNumber := message.From // Get the phone number of the person who clicked the button
 
 	if strings.HasPrefix(buttonReplyID, "mark_paid_") {
-		log.Info("Processing 'mark_paid' action")
 		invoiceID := strings.TrimPrefix(buttonReplyID, "mark_paid_")
-		log = log.WithField("invoiceID", invoiceID)
+		log := log.WithField("invoiceID", invoiceID)
 
+		// --- Security Check for Tenant --- //
 		invoice, err := firestoreService.GetInvoice(context.Background(), invoiceID)
 		if err != nil {
-			return // Error is already logged in firestoreService
-		}
-
-		tenant, err := firestoreService.GetUser(context.Background(), invoice.TenantID)
-		if err != nil {
-			return // Error is already logged in firestoreService
-		}
-
-		if senderPhoneNumber != tenant.PhoneNumber {
-			log.Warn("Unauthorized 'Mark as Paid' attempt")
+			log.WithError(err).Error("Failed to get invoice for security check")
 			return
 		}
-		log.Info("Authorized tenant confirmed")
-
-		landlord, err := firestoreService.GetUser(context.Background(), invoice.LandlordID)
+		tenant, err := firestoreService.GetUser(context.Background(), invoice.TenantRef.ID)
 		if err != nil {
-			return // Error is already logged in firestoreService
+			log.WithError(err).Error("Failed to get tenant for security check")
+			return
 		}
 
+		// VERIFY: Is the person clicking the button the actual tenant?
+		if senderPhoneNumber != tenant.PhoneNumber {
+			log.Warnf("Unauthorized 'Mark as Paid' attempt. Sender: %s, Expected Tenant: %s", senderPhoneNumber, tenant.PhoneNumber)
+			return // Stop processing immediately
+		}
+
+		// --- End Security Check --- //
+
+		log.Info("'Mark as Paid' button clicked by authorized tenant")
+
+		landlord, err := firestoreService.GetUser(context.Background(), invoice.LandlordRef.ID)
+		if err != nil {
+			log.WithError(err).Error("Failed to get landlord")
+			return
+		}
+
+		// --- Send Landlord Verification Template ---
 		templateName := "payment_verification_v1"
-		log.WithFields(logrus.Fields{"templateName": templateName, "landlordPhone": landlord.PhoneNumber}).Info("Sending verification template to landlord")
+		languageCode := "en_US" // Or your default language code
 
-		components := []map[string]interface{}{ /* ... Omitted for brevity ... */ }
+		// Construct the components for the template message
+		components := []map[string]interface{}{
+			{
+				"type": "body",
+				"parameters": []map[string]interface{}{
+					{"type": "text", "text": landlord.Name},
+					{"type": "text", "text": tenant.Name},
+					{"type": "text", "text": fmt.Sprintf("%.2f", invoice.Amount)},
+					{"type": "text", "text": invoice.Month},
+					{"type": "text", "text": invoice.PropertyName},
+				},
+			},
+			{
+				"type": "button",
+				"sub_type": "quick_reply",
+				"index": "0",
+				"parameters": []map[string]interface{}{
+					{"type": "payload", "payload": fmt.Sprintf("received_%s", invoiceID)},
+				},
+			},
+			{
+				"type": "button",
+				"sub_type": "quick_reply",
+				"index": "1",
+				"parameters": []map[string]interface{}{
+					{"type": "payload", "payload": fmt.Sprintf("not_paid_%s", invoiceID)},
+				},
+			},
+		}
 
-		if err := whatsappService.SendTemplateMessage(landlord.PhoneNumber, templateName, "en_US", components); err != nil {
-			log.WithError(err).Error("Failed to send verification template")
-		} else {
-			log.Info("Successfully sent verification template")
+		if err := whatsappService.SendTemplateMessage(landlord.PhoneNumber, templateName, languageCode, components); err != nil {
+			log.WithError(err).Error("Failed to send verification template to landlord")
 		}
 
 	} else if strings.HasPrefix(buttonReplyID, "received_") || strings.HasPrefix(buttonReplyID, "not_paid_") {
-		var action, status, invoiceID string
-		if strings.HasPrefix(buttonReplyID, "received_") {
-			action, status, invoiceID = "Received", "paid", strings.TrimPrefix(buttonReplyID, "received_")
-		} else {
-			action, status, invoiceID = "Not Paid", "pending", strings.TrimPrefix(buttonReplyID, "not_paid_")
-		}
-		log = log.WithFields(logrus.Fields{"action": action, "status": status, "invoiceID": invoiceID})
-		log.Info("Processing landlord payment confirmation")
+		var action, status string
+		var invoiceID string
 
+		if strings.HasPrefix(buttonReplyID, "received_") {
+			action = "Received"
+			status = "paid"
+			invoiceID = strings.TrimPrefix(buttonReplyID, "received_")
+		} else {
+			action = "Not Paid"
+			status = "pending"
+			invoiceID = strings.TrimPrefix(buttonReplyID, "not_paid_")
+		}
+
+		log := log.WithField("invoiceID", invoiceID)
+
+		// --- Security Check for Landlord --- //
 		invoice, err := firestoreService.GetInvoice(context.Background(), invoiceID)
 		if err != nil {
+			log.WithError(err).Error("Failed to get invoice for security check")
 			return
 		}
-
-		landlord, err := firestoreService.GetUser(context.Background(), invoice.LandlordID)
+		landlord, err := firestoreService.GetUser(context.Background(), invoice.LandlordRef.ID)
 		if err != nil {
+			log.WithError(err).Error("Failed to get landlord for security check")
 			return
 		}
 
+		// VERIFY: Is the person clicking the button the actual landlord?
 		if senderPhoneNumber != landlord.PhoneNumber {
-			log.Warn("Unauthorized payment confirmation attempt")
-			return
+			log.Warnf("Unauthorized '%s' attempt. Sender: %s, Expected Landlord: %s", action, senderPhoneNumber, landlord.PhoneNumber)
+			return // Stop processing immediately
 		}
-		log.Info("Authorized landlord confirmed")
+		// --- End Security Check --- //
+
+		log.Infof("'%s' button clicked by authorized landlord", action)
 
 		if err := firestoreService.UpdateInvoiceStatus(context.Background(), invoiceID, status); err != nil {
-			return // Error logged in service
+			log.WithError(err).Errorf("Failed to update invoice status to '%s'", status)
+			return
 		}
-		log.Info("Successfully updated invoice status")
-	} else {
-		log.Warn("Unknown interactive button prefix")
 	}
 }
