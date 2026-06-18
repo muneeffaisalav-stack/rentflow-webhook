@@ -12,7 +12,13 @@ import (
 )
 
 func HandleInteractiveMessage(log *logrus.Logger, whatsappService *services.WhatsappService, firestoreService *firebase.FirestoreService, message *models.Message) {
-	buttonReplyID := message.Interactive.ButtonReply.ID
+	var buttonReplyID string
+	if message.Interactive != nil {
+		buttonReplyID = message.Interactive.ButtonReply.ID
+	} else if message.Button != nil {
+		buttonReplyID = message.Button.Payload
+	}
+
 	senderPhoneNumber := message.From // Get the phone number of the person who clicked the button
 
 	if strings.HasPrefix(buttonReplyID, "mark_paid_") {

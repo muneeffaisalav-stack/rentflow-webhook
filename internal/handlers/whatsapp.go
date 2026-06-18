@@ -20,8 +20,9 @@ func VerifyWebhook(cfg *config.Config, log *logrus.Logger) gin.HandlerFunc {
 		challenge := c.Query("hub.challenge")
 
 		log.WithFields(logrus.Fields{
-			"mode":  mode,
-			"token": token,
+			"mode":      mode,
+			"token":     token,
+			"challenge": challenge,
 		}).Info("Received verification request")
 
 		if mode == "subscribe" && token == cfg.WhatsappVerifyToken {
@@ -51,13 +52,15 @@ func ProcessWebhook(log *logrus.Logger, whatsappService *services.WhatsappServic
 
 		if len(webhook.Entry) > 0 && len(webhook.Entry[0].Changes) > 0 && len(webhook.Entry[0].Changes[0].Value.Messages) > 0 {
 			message := webhook.Entry[0].Changes[0].Value.Messages[0]
-			if message.Interactive != nil && message.Interactive.Type == "button_reply" {
+
+			// Check if it's an interactive message reply or a button click
+			if (message.Interactive != nil && message.Interactive.Type == "button_reply") || message.Type == "button" {
 				HandleInteractiveMessage(log, whatsappService, firestoreService, &message)
 			} else {
-				log.Info("Ignoring non-interactive message")
+				log.WithField("type", message.Type).Info("Ignoring non-interactive or non-button message")
 			}
 		} else {
-			log.Info("Ignoring empty webhook")
+			log.Info("Ignoring empty or non-message webhook")
 		}
 
 		log.Info("Webhook processed successfully")
