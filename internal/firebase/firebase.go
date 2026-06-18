@@ -31,7 +31,7 @@ type Invoice struct {
 // User represents a user in Firestore
 type User struct {
 	Name        string `firestore:"name"`
-	PhoneNumber string `firestore:"phoneNumber"`
+	PhoneNumber string `firestore:"phone"`
 }
 
 // Tenant represents a tenant in Firestore
