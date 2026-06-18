@@ -18,19 +18,28 @@ type FirestoreService struct {
 
 // Invoice represents an invoice in Firestore
 type Invoice struct {
-	Amount       float64                `firestore:"amount"`
-	DueDate      string                 `firestore:"due_date"`
-	Month        string                 `firestore:"month"`
-	Status       string                 `firestore:"status"`
-	PropertyName string                 `firestore:"property_name"`
-	LandlordRef  *firestore.DocumentRef `firestore:"landlordRef"`
-	TenantRef    *firestore.DocumentRef `firestore:"tenantRef"`
+	Amount     int64  `firestore:"amount"`
+	CreatedAt  string `firestore:"createdAt"`
+	ID         string `firestore:"id"`
+	LandlordID string `firestore:"landlordId"`
+	Month      string `firestore:"month"`
+	PropertyID string `firestore:"propertyId"`
+	Status     string `firestore:"status"`
+	TenantID   string `firestore:"tenantId"`
 }
 
 // User represents a user in Firestore
 type User struct {
 	Name        string `firestore:"name"`
 	PhoneNumber string `firestore:"phoneNumber"`
+}
+
+// Property represents a property in Firestore
+type Property struct {
+	Address      string `firestore:"address"`
+	CreatedAt    string `firestore:"createdAt"`
+	LandlordID   string `firestore:"landlordId"`
+	PropertyName string `firestore:"propertyName"`
 }
 
 // NewFirestoreService creates a new FirestoreService
@@ -88,6 +97,20 @@ func (s *FirestoreService) GetUser(ctx context.Context, userID string) (*User, e
 		return nil, err
 	}
 	return &user, nil
+}
+
+// GetProperty retrieves a property from Firestore
+func (s *FirestoreService) GetProperty(ctx context.Context, propertyID string) (*Property, error) {
+	s.log.WithField("propertyID", propertyID).Info("Getting property from Firestore")
+	doc, err := s.Client.Collection("properties").Doc(propertyID).Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var property Property
+	if err := doc.DataTo(&property); err != nil {
+		return nil, err
+	}
+	return &property, nil
 }
 
 // UpdateInvoiceStatus updates the status of an invoice in Firestore

@@ -25,7 +25,7 @@ func HandleInteractiveMessage(log *logrus.Logger, whatsappService *services.What
 			log.WithError(err).Error("Failed to get invoice for security check")
 			return
 		}
-		tenant, err := firestoreService.GetUser(context.Background(), invoice.TenantRef.ID)
+		tenant, err := firestoreService.GetUser(context.Background(), invoice.TenantID)
 		if err != nil {
 			log.WithError(err).Error("Failed to get tenant for security check")
 			return
@@ -41,9 +41,15 @@ func HandleInteractiveMessage(log *logrus.Logger, whatsappService *services.What
 
 		log.Info("'Mark as Paid' button clicked by authorized tenant")
 
-		landlord, err := firestoreService.GetUser(context.Background(), invoice.LandlordRef.ID)
+		landlord, err := firestoreService.GetUser(context.Background(), invoice.LandlordID)
 		if err != nil {
 			log.WithError(err).Error("Failed to get landlord")
+			return
+		}
+
+		property, err := firestoreService.GetProperty(context.Background(), invoice.PropertyID)
+		if err != nil {
+			log.WithError(err).Error("Failed to get property")
 			return
 		}
 
@@ -58,9 +64,9 @@ func HandleInteractiveMessage(log *logrus.Logger, whatsappService *services.What
 				"parameters": []map[string]interface{}{
 					{"type": "text", "text": landlord.Name},
 					{"type": "text", "text": tenant.Name},
-					{"type": "text", "text": fmt.Sprintf("%.2f", invoice.Amount)},
+					{"type": "text", "text": fmt.Sprintf("%d", invoice.Amount)},
 					{"type": "text", "text": invoice.Month},
-					{"type": "text", "text": invoice.PropertyName},
+					{"type": "text", "text": property.PropertyName},
 				},
 			},
 			{
@@ -107,7 +113,7 @@ func HandleInteractiveMessage(log *logrus.Logger, whatsappService *services.What
 			log.WithError(err).Error("Failed to get invoice for security check")
 			return
 		}
-		landlord, err := firestoreService.GetUser(context.Background(), invoice.LandlordRef.ID)
+		landlord, err := firestoreService.GetUser(context.Background(), invoice.LandlordID)
 		if err != nil {
 			log.WithError(err).Error("Failed to get landlord for security check")
 			return

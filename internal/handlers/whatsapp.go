@@ -51,7 +51,7 @@ func ProcessWebhook(log *logrus.Logger, whatsappService *services.WhatsappServic
 
 		if len(webhook.Entry) > 0 && len(webhook.Entry[0].Changes) > 0 && len(webhook.Entry[0].Changes[0].Value.Messages) > 0 {
 			message := webhook.Entry[0].Changes[0].Value.Messages[0]
-			if message.Interactive.Type == "button_reply" {
+			if message.Interactive != nil && message.Interactive.Type == "button_reply" {
 				HandleInteractiveMessage(log, whatsappService, firestoreService, &message)
 			} else {
 				log.Info("Ignoring non-interactive message")
