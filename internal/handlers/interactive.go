@@ -38,7 +38,7 @@ func HandleInteractiveMessage(log *logrus.Logger, whatsappService *services.What
 		}
 
 		// VERIFY: Is the person clicking the button the actual tenant?
-		if senderPhoneNumber != tenant.Phone {
+		if strings.TrimPrefix(senderPhoneNumber, "+") != strings.TrimPrefix(tenant.Phone, "+") {
 			log.Warnf("Unauthorized 'Mark as Paid' attempt. Sender: %s, Expected Tenant: %s", senderPhoneNumber, tenant.Phone)
 			return // Stop processing immediately
 		}
@@ -126,7 +126,7 @@ func HandleInteractiveMessage(log *logrus.Logger, whatsappService *services.What
 		}
 
 		// VERIFY: Is the person clicking the button the actual landlord?
-		if senderPhoneNumber != landlord.PhoneNumber {
+		if strings.TrimPrefix(senderPhoneNumber, "+") != strings.TrimPrefix(landlord.PhoneNumber, "+") {
 			log.Warnf("Unauthorized '%s' attempt. Sender: %s, Expected Landlord: %s", action, senderPhoneNumber, landlord.PhoneNumber)
 			return // Stop processing immediately
 		}
